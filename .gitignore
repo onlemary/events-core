@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env.events-core
+.env.events-core.local
+*.log
+.tmp/
+coverage/

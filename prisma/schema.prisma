@@ -1,0 +1,79 @@
+// =============================================================================
+// @onlemary/events-core — Prisma 7 schema
+// =============================================================================
+// Source of truth for `system_events` (buffer) and `notification_policy` (mute
+// + digest + immediate). See `.kiro/specs/events-core/design.md` §4.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  // Custom output path required by Prisma 7: the default `node_modules/.prisma/client`
+  // is a runtime-only location that breaks `import { PrismaClient } from '@prisma/client'`
+  // because the package's default.js does require('.prisma/client/default') relative
+  // to its own path and can't find a generated client outside the package root.
+  // Matches the @onlemary/notifier-core convention: see `packages/notifier-core/src/prisma.ts`.
+  output   = "../dist/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Severity {
+  critical
+  warning
+  info
+}
+
+enum SuppressReason {
+  muted
+  cooldown
+  no_recipient
+  no_policy
+}
+
+enum PolicyAction {
+  notify_immediate
+  digest_daily
+  mute
+}
+
+enum NotifyChannel {
+  email
+  whatsapp
+  sms
+  slack
+}
+
+model BufferedEvent {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_slug          String           // multi-tenant: every event is scoped to one org
+  event_kind        String           // discriminator for JSONB shape (see schemas.ts)
+  natural_key       String           // for silent dedupe
+  severity          Severity         @default(critical)
+  context           Json             // Zod-validated per event_kind
+  created_at        DateTime         @default(now())
+  notified_at       DateTime?        // set when dispatchFn returns success
+  suppressed_reason SuppressReason?
+  dispatch_attempts Int              @default(0)
+
+  @@unique([org_slug, event_kind, natural_key])              // SILENT DEDUPE
+  @@index([org_slug, event_kind, created_at(sort: Desc)])
+  @@index([event_kind, created_at(sort: Desc)])
+  @@map("system_events")
+}
+
+model NotificationPolicy {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_slug             String?       // NULL = wildcard default
+  event_kind           String
+  action               PolicyAction
+  channel              NotifyChannel?
+  cooldown_ms          Int?          // default 3600000 (1h) when action='notify_immediate'
+  daily_digest_at_hour Int?          // 0-23 local org hour, when action='digest_daily'
+  enabled              Boolean       @default(true)
+
+  @@unique([org_slug, event_kind])
+  @@index([event_kind])
+  @@map("notification_policy")
+}
