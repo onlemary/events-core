@@ -26,9 +26,10 @@ A declarative `notification_policy` table decides per `event_kind` and per
 ## Install
 
 ```bash
-# NOT YET PUBLISHED — see `.kiro/specs/events-core/HANDOFF.md` §1 for context.
-# In dev: place at `packages/events-core/` at the repo root.
-# In prod: consumed via npm.pkg.github.com with `@onlemary/events-core: "latest"`.
+# Status: PUBLISHED to GitHub Packages (https://npm.pkg.github.com).
+# See `npm view @onlemary/events-core version` for the current release.
+# In dev: place at `packages/events-core/` at the repo root (this standalone repo).
+# In prod: consumed via `pnpm add @onlemary/events-core@latest` (never pin a version).
 ```
 
 ## Quick start
